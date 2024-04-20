@@ -15,3 +15,14 @@ class User(SQLModel):
 
     class Config:
         tablename = "users"
+
+connection_string = str(settings.DATABASE_URL).replace(
+    "postgresql", "postgresql+psycopg"
+)
+
+engine = create_engine(
+    connection_string, connect_args={"sslmode": "require"}, pool_recycle=300
+)
+
+def create_db_and_tables() -> None:
+    SQLModel.metadata.create_all(engine)
