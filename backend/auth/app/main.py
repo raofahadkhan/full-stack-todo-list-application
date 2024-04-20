@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel import SQLModel, Field, create_engine, Session, select
 from app import settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -8,7 +8,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
 
-class Users(SQLModel, table=True):
+class User(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
     email: str = Field(max_length=40)
     password: str = Field(max_length=64)
@@ -78,6 +78,36 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # Generate JWT refresh token
 def create_refresh_token(data: dict):
     return create_access_token(data, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+
+# Signup API endpoint
+@app.post("/signup/")
+async def signup(request: SignupRequest, session: Session = Depends(get_session)):
+    # Check if user already exists
+    existing_user = session.exec(select(User).where(User.email == request.email)).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+
+    # Create a new user
+    new_user = User(name=request.name, email=request.email, password=request.password)
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    # Generate access token and refresh token
+    access_token = create_access_token(data={"sub": new_user.email})
+    refresh_token = create_refresh_token(data={"sub": new_user.email})
+
+    # Set expiration time for cookies
+    access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 # Adjust as needed
+    refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60 # Adjust as needed
+
+    # Set access token and refresh token as cookies with expiration time
+    response = Response()
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
+
+    return response
+
 
 @app.get("/")
 def read_root():
