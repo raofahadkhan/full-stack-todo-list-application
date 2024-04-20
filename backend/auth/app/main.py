@@ -37,14 +37,18 @@ async def lifespan(app:FastAPI)->AsyncGenerator[None, None]:
     yield
     
 app = FastAPI(lifespan=lifespan, title="Todo Api", version="0.0.1", 
-              servers=[
-                  {
-                      "url": "http://0.0.0.0:8000",
-                      "description": "Development Server"
-                  }
-               ]
-              )
+        servers=[
+            {
+                "url": "http://0.0.0.0:8000",
+                "description": "Development Server"
+            }
+          ]
+        )
 
 def get_session():
     with Session(engine) as session:
         yield session
+        
+@app.get("/")
+def read_root():
+    return {"API Name": "Authentication API"}
