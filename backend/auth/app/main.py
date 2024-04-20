@@ -35,3 +35,12 @@ async def lifespan(app:FastAPI)->AsyncGenerator[None, None]:
     print('Creating Tables...')
     create_db_and_tables()
     yield
+    
+app = FastAPI(lifespan=lifespan, title="Todo Api", version="0.0.1", 
+              servers=[
+                  {
+                      "url": "http://0.0.0.0:8000",
+                      "description": "Development Server"
+                  }
+               ]
+              )
