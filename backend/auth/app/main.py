@@ -15,6 +15,11 @@ class Users(SQLModel, table=True):
     created_date: int = Field(default=None)
     updated_date: int = Field(default=None)
 
+class SignupRequest(SQLModel):
+    name: str
+    email: str
+    password: str
+
 connection_string = str(settings.DATABASE_URL).replace(
     "postgresql", "postgresql+psycopg"
 )
