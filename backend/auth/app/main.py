@@ -79,8 +79,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def create_refresh_token(data: dict):
     return create_access_token(data, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
 
-
-        
 @app.get("/")
 def read_root():
     return {"API Name": "Authentication API"} 
