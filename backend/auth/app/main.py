@@ -51,4 +51,4 @@ def get_session():
         
 @app.get("/")
 def read_root():
-    return {"API Name": "Authentication API"}
+    return {"API Name": "Authentication API"} 
