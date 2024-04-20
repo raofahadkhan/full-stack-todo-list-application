@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, create_engine
+from sqlmodel import SQLModel, Field, create_engine, Session
 from app import settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -44,3 +44,7 @@ app = FastAPI(lifespan=lifespan, title="Todo Api", version="0.0.1",
                   }
                ]
               )
+
+def get_session():
+    with Session(engine) as session:
+        yield session
