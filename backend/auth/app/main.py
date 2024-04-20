@@ -1,5 +1,8 @@
 from sqlmodel import SQLModel, Field, create_engine
 from app import settings
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from typing import AsyncGenerator
 
 class User(SQLModel):
     user_id: str = Field(primary_key=True, index=True)
@@ -26,3 +29,9 @@ engine = create_engine(
 
 def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
+    
+@asynccontextmanager
+async def lifespan(app:FastAPI)->AsyncGenerator[None, None]:
+    print('Creating Tables...')
+    create_db_and_tables()
+    yield
