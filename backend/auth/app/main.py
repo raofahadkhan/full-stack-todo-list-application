@@ -3,6 +3,10 @@ from app import settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from typing import AsyncGenerator
+from fastapi import FastAPI, HTTPException, Depends, Cookie, Response
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import Optional
 
 class Users(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
@@ -49,6 +53,33 @@ app = FastAPI(lifespan=lifespan, title="Todo Api", version="0.0.1",
 def get_session():
     with Session(engine) as session:
         yield session
+        
+def verify_token(token: str = Cookie(None)):
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Generate JWT access token
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded_jwt
+
+# Generate JWT refresh token
+def create_refresh_token(data: dict):
+    return create_access_token(data, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+
+
         
 @app.get("/")
 def read_root():
