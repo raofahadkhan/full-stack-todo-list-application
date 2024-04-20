@@ -4,9 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from typing import AsyncGenerator
 
-class User(SQLModel, table=True):
+class Users(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
-    name: str = Field(max_length=20)
     email: str = Field(max_length=40)
     password: str = Field(max_length=64)
     email_verified: bool = Field(default=False)
@@ -15,7 +14,6 @@ class User(SQLModel, table=True):
     code_expiry_date: int = Field(default=None)
     created_date: int = Field(default=None)
     updated_date: int = Field(default=None)
-
 
 connection_string = str(settings.DATABASE_URL).replace(
     "postgresql", "postgresql+psycopg"
@@ -50,3 +48,4 @@ def get_session():
 @app.get("/")
 def read_root():
     return {"API Name": "Authentication API"} 
+
