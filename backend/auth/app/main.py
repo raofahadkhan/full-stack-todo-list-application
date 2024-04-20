@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from typing import AsyncGenerator
 
-class User(SQLModel):
+class User(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
     name: str = Field(max_length=20)
     email: str = Field(max_length=40)
@@ -16,8 +16,6 @@ class User(SQLModel):
     created_date: int = Field(default=None)
     updated_date: int = Field(default=None)
 
-    class Config:
-        tablename = "users"
 
 connection_string = str(settings.DATABASE_URL).replace(
     "postgresql", "postgresql+psycopg"
