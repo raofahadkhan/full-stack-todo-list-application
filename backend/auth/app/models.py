@@ -11,3 +11,6 @@ class VerificationCode(SQLModel):
     
 class ResendVerificationCode(SQLModel):
     email: str
+    
+class ResponseModel(SQLModel):
+    message: str

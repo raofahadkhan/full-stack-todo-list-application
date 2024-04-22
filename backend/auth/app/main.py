@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest, VerificationCode, ResendVerificationCode
+from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel
 import json
 
 class Users(SQLModel, table=True):
@@ -74,7 +74,7 @@ def get_session():
 def read_root():
     return {"API Name": "Authentication API"} 
 
-@app.post("/signup/")
+@app.post("/signup", response_model=ResponseModel)
 async def signup(request: SignupRequest, session: Session = Depends(get_session)):
     # Check if user already exists
     existing_user = session.exec(select(Users).where(Users.email == request.email)).first()
@@ -131,7 +131,7 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
 
     return response
 
-@app.post("/verify-email")
+@app.post("/verify-email", response_model=ResponseModel)
 async def verify_email(verification_data: VerificationCode, session: Session = Depends(get_session)):
     # Find the user with the provided email
     user = session.exec(select(Users).where(Users.email == verification_data.email)).first()
@@ -159,7 +159,7 @@ async def verify_email(verification_data: VerificationCode, session: Session = D
 
     return response
 
-@app.post("/resend-verification-code")
+@app.post("/resend-verification-code", response_model=ResponseModel)
 async def resend_verification_code(resend_data: ResendVerificationCode, session: Session = Depends(get_session)):
     # Find the user with the provided email
     user = session.exec(select(Users).where(Users.email == resend_data.email)).first()
