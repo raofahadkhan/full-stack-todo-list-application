@@ -261,8 +261,10 @@ async def login(request: LoginRequest, response: Response, session: Session = De
     # Set access token and refresh token as cookies with expiration time
     access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    
+    response = Response()
+    
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
 
-    message = {"message": "Login successful"}
-    return Response(content=json.dumps(message), status_code=200)
+    return response
