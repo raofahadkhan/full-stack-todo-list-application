@@ -1,14 +1,30 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from app import settings
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
 from typing import List
 from todo.models import ResponseModel, CreateTodoRequest, GetTodoResponse, GetTodoRequest, DeleteTodoRequest
 import uuid
+from starlette.middleware.base import BaseHTTPMiddleware
+from sqlmodel import Session, select
+from datetime import datetime
+from jose import JWTError, jwt
+
+class Users(SQLModel, table=True):
+    __tablename__ = "users"
+    __table_args__ = {"extend_existing": True} 
+    user_id: str = Field(primary_key=True, index=True)
+    name: str = Field(max_length=40)
+    email: str = Field(max_length=40)
+    password: str = Field(max_length=64)
+    email_verified: bool = Field(default=False)
+    verification_code: str = Field(max_length=6, default=None)
+    code_expiry_timestamp: int = Field(default=None)
+    created_date: int = Field(default=datetime.now().timestamp())
+    refresh_token: str = Field(default=None)
 
 class Todo(SQLModel, table=True):
     todo_id: str = Field(primary_key=True, index=True)
@@ -57,6 +73,39 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# class AuthenticationMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request: Request, call_next):
+        
+#         excluded_routes = ['/', '/docs', '/openapi.json']
+        
+#         # Check if the request path is in the excluded paths
+#         if request.url.path not in excluded_routes:
+#             token = request.cookies.get("access_token")
+#             if not token:
+#                 raise HTTPException(status_code=401, detail="Not Authorized")
+
+#             try:
+#                 payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+#                 email = payload.get("sub")
+#                 if not email:
+#                     raise HTTPException(status_code=401, detail="Invalid token")
+                
+#                 # Get database session
+#                 with Session() as session:
+#                     # Query the user
+#                     user = session.exec(select(Users).where(Users.email == email)).first()
+                
+#                 if not user:
+#                     raise HTTPException(status_code=401, detail="User not found")
+            
+#             except jwt.JWTError:
+#                 raise HTTPException(status_code=401, detail="Invalid token")
+
+#         response = await call_next(request)
+#         return response
+
+# app.add_middleware(AuthenticationMiddleware)
 
 def get_session():
     with Session(engine) as session:
