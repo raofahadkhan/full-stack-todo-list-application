@@ -3,13 +3,12 @@ from app import settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from typing import AsyncGenerator
-from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List
-from todo.models import ResponseModel, CreateTodoRequest, GetTodoResponse, GetTodoRequest
+from todo.models import ResponseModel, CreateTodoRequest, GetTodoResponse, GetTodoRequest, DeleteTodoRequest
 import uuid
-import json
 
 class Todo(SQLModel, table=True):
     todo_id: str = Field(primary_key=True, index=True)
@@ -91,3 +90,16 @@ def create_todo(todo: CreateTodoRequest, session: Session = Depends(get_session)
 def read_todos(getTodoRequest: GetTodoRequest,session: Session = Depends(get_session)):
     todos = session.exec(select(Todo).where(Todo.user_id == getTodoRequest.user_id)).all()
     return todos
+
+@app.delete("/todos", response_model=ResponseModel)
+def delete_todo(deleteTodoRequest: DeleteTodoRequest, session: Session = Depends(get_session)):
+    statement = select(Todo).where(Todo.todo_id == deleteTodoRequest.todo_id)
+    results = session.exec(statement)
+    todo = results.first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    session.delete(todo)
+    session.commit()
+    
+    message = {"message": "todo deleted successfully"}
+    return message
