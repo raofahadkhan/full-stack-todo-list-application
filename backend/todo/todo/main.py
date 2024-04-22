@@ -87,3 +87,7 @@ def create_todo(todo: CreateTodoRequest, session: Session = Depends(get_session)
     message = {"message": "todo added successfully"}
     return message
 
+@app.post("/gettodos", response_model=List[GetTodoResponse])
+def read_todos(getTodoRequest: GetTodoRequest,session: Session = Depends(get_session)):
+    todos = session.exec(select(Todo).where(Todo.user_id == getTodoRequest.user_id)).all()
+    return todos
