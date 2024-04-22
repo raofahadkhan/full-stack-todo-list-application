@@ -65,7 +65,7 @@ def get_session():
 def read_root():
     return {"API Name": "TODO API"}
 
-@app.post("/todos", response_model=Todo)
+@app.post("/addtodos", response_model=Todo)
 def create_todo(todo: Todo, session: Session = Depends(get_session)):
     session.add(todo)
     session.commit()
