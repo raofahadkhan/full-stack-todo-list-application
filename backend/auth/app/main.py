@@ -5,12 +5,10 @@ from fastapi import FastAPI, HTTPException
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
-from jose import jwt
 from datetime import datetime, timedelta
-from typing import Optional
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel
+from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel, ForgotPasswordModel
 import json
 
 class Users(SQLModel, table=True):
@@ -96,7 +94,7 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
         "t55484278@gmail.com",
          request.email,
         "dtys apkz kbun wtmp",
-        f"<h3>The OTP to reset your password is {otp} and it will be expired in 5 minutes.</h3>"
+        f"<h3>The OTP to verify your email is {otp} and it will be expired in 5 minutes.</h3>"
     )
     
     # Calculate the validity time (5 minutes)
@@ -183,10 +181,37 @@ async def resend_verification_code(resend_data: ResendVerificationCode, session:
         "t55484278@gmail.com",
          resend_data.email,
         "dtys apkz kbun wtmp",
-        f"<h3>The OTP to reset your password is {new_verification_code} and it will be expired in 5 minutes.</h3>"
+        f"<h3>The OTP to verify your email is {new_verification_code} and it will be expired in 5 minutes.</h3>"
     )
 
     message = {"message": "Email is Verified Already!"}
     response = Response(content=json.dumps(message),status_code=201)
 
     return response
+
+@app.post("/forgot_password", response_model=ResponseModel)
+async def forgot_password(request_model: ForgotPasswordModel, session: Session = Depends(get_session)):
+    # Check if user exists
+    user = session.exec(select(Users).where(Users.email == request_model.email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate an OTP
+    otp = generate_otp()
+    
+    # Save OTP in user's data
+    user.verification_code = str(otp)
+    user.code_expiry_timestamp = int((datetime.now() + timedelta(minutes=5)).timestamp())
+    session.commit()
+    
+    # Send the new verification code via email
+    await send_email_smtplib(
+        "Todo List - Password Reset Otp",
+        "t55484278@gmail.com",
+         request_model.email,
+        "dtys apkz kbun wtmp",
+        f"<h3>The OTP to reset your password is {otp} and it will be expired in 5 minutes.</h3>"
+    )
+    
+    message = {"message": "OTP sent successfully"}
+    return Response(content=json.dumps(message), status_code=200)
