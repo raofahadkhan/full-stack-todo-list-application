@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from app import settings
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, Cookie, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,9 +9,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
 import uuid
-from fastapi.responses import JSONResponse
 from app.helpers import generate_otp, send_email_smtplib
-
 
 class Users(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
@@ -154,10 +152,10 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
     response = Response(content=message,status_code=201)
 
     # Set access token and refresh token as cookies with expiration time
-    access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    # access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    # refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
+    # response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
+    # response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
 
     return response
