@@ -6,6 +6,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
+from typing import List
+from todo.models import ResponseModel, CreateTodoRequest, GetTodoResponse, GetTodoRequest
 import uuid
 import json
 
@@ -65,9 +67,23 @@ def get_session():
 def read_root():
     return {"API Name": "TODO API"}
 
-@app.post("/addtodos", response_model=Todo)
-def create_todo(todo: Todo, session: Session = Depends(get_session)):
-    session.add(todo)
+@app.post("/addtodos", response_model=ResponseModel)
+def create_todo(todo: CreateTodoRequest, session: Session = Depends(get_session)):
+    
+     # Generate a UUID for user_id
+    todo_id = str(uuid.uuid4())
+    
+    # Create a new todo object with the generated todo_id
+    new_todo = Todo(
+        todo_id=todo_id,
+        user_id=todo.user_id,
+        todo_description=todo.todo_description
+    )
+    
+    session.add(new_todo)
     session.commit()
-    session.refresh(todo)
-    return todo
+    session.refresh(new_todo)
+    
+    message = {"message": "todo added successfully"}
+    return message
+
