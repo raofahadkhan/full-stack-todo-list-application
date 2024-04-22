@@ -5,3 +5,7 @@ services:
     image: raofahadkhan/auth-service
     ports:
       - "8080:8000"
+  todo-service:
+    image: raofahadkhan/todo-service
+    ports:
+      - "2000:8000"
