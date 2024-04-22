@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import uuid
 from fastapi.responses import JSONResponse
+from app.helpers import generate_otp, send_email_smtplib
 
 
 class Users(SQLModel, table=True):
@@ -19,8 +20,7 @@ class Users(SQLModel, table=True):
     password: str = Field(max_length=64)
     email_verified: bool = Field(default=False)
     verification_code: str = Field(max_length=6, default=None)
-    code_created_date: int = Field(default=None)
-    code_expiry_date: int = Field(default=None)
+    code_expiry_timestamp: int = Field(default=None)
     created_date: int = Field(default=datetime.now().timestamp())
     refresh_token: str = Field(default=None)
 
@@ -120,6 +120,23 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
     # Generate access token and refresh token
     access_token = create_access_token(data={"sub": request.email})
     refresh_token = create_refresh_token(data={"sub": request.email})
+    
+    # Generated and Sent Otp Via Email
+    otp = generate_otp()
+
+    await send_email_smtplib(
+        "Todo List - Email Verificaion Otp",
+        "t55484278@gmail.com",
+         request.email,
+        "dtys apkz kbun wtmp",
+        f"<h3>The OTP to reset your password is {otp} and it will be expired in 5 minutes.</h3>"
+    )
+    
+    # Calculate the validity time (5 minutes)
+    validity_time = datetime.now() + timedelta(minutes=5)
+
+    # Convert the datetime objects to Unix timestamps
+    validity_timestamp = int(validity_time.timestamp())
 
     # Create a new user with the generated user_id
     new_user = Users(
@@ -127,9 +144,8 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
         name=request.name,
         email=request.email,
         password=request.password,
-        verification_code=10000,
-        code_created_date=int(datetime.now().timestamp()),
-        code_expiry_date=int(datetime.now().timestamp()),
+        verification_code=otp,
+        code_expiry_timestamp=validity_timestamp,
         refresh_token=refresh_token
     )
     session.add(new_user)
