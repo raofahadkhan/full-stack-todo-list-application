@@ -105,14 +105,12 @@ def create_refresh_token(data: dict):
 def read_root():
     return {"API Name": "Authentication API"} 
 
-# Signup API endpoint
 @app.post("/signup/")
 async def signup(request: SignupRequest, session: Session = Depends(get_session)):
     # Check if user already exists
     existing_user = session.exec(select(Users).where(Users.email == request.email)).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
-
 
     # Generate a UUID for user_id
     user_id = str(uuid.uuid4())
@@ -152,16 +150,14 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
     session.commit()
     session.refresh(new_user)
 
+    message = {"message": "User created successfully"}
+    response = Response(content=message,status_code=201)
+
     # Set access token and refresh token as cookies with expiration time
-    response = Response()
-    
-    # Set expiration time for cookies
     access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     
     response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
 
-      # Return success message
-    message = {"message": "User created successfully"}
-    return JSONResponse(content=message, status_code=201)
+    return response
