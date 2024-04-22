@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest
+from app.models import SignupRequest, VerificationCode
 import json
 
 class Users(SQLModel, table=True):
@@ -130,3 +130,25 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
     # response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
 
     return response
+
+@app.post("/verify-email")
+async def verify_email(verification_data: VerificationCode, session: Session = Depends(get_session)):
+    # Find the user with the provided email
+    user = session.exec(select(Users).where(Users.email == verification_data.email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if the verification code matches
+    if user.verification_code != verification_data.verification_code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    # Check if the verification code is expired
+    current_timestamp = int(datetime.now().timestamp())
+    if user.code_expiry_timestamp and user.code_expiry_timestamp < current_timestamp:
+        raise HTTPException(status_code=400, detail="Verification code expired")
+
+    # Update the email_verified field
+    user.email_verified = True
+    session.commit()
+
+    return {"message": "Email verified successfully"}
