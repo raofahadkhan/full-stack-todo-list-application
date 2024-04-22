@@ -2,6 +2,9 @@ from sqlmodel import SQLModel
 
 class BaseUser(SQLModel):
     email: str
+    
+class LoginRequest(BaseUser):
+    password: str
 
 class SignupRequest(BaseUser):
     name: str

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel, ForgotPasswordModel, ResetPasswordRequest
+from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel, ForgotPasswordModel, ResetPasswordRequest, LoginRequest
 import json
 
 class Users(SQLModel, table=True):
@@ -237,4 +237,32 @@ async def reset_password(request: ResetPasswordRequest, session: Session = Depen
     session.commit()
 
     message = {"message": "Password reset successfully"}
+    return Response(content=json.dumps(message), status_code=200)
+
+@app.post("/login", response_model=ResponseModel)
+async def login(request: LoginRequest, response: Response, session: Session = Depends(get_session)):
+    # Find the user with the provided email
+    user = session.exec(select(Users).where(Users.email == request.email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Verify the password
+    if user.password != request.password:
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    # Check if the user's email is verified
+    if not user.email_verified:
+        raise HTTPException(status_code=401, detail="Email not verified")
+
+    # Generate new access token and refresh token
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+
+    # Set access token and refresh token as cookies with expiration time
+    access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
+
+    message = {"message": "Login successful"}
     return Response(content=json.dumps(message), status_code=200)
