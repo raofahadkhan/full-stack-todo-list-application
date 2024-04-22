@@ -4,4 +4,4 @@ services:
   auth-service:
     image: raofahadkhan/auth-service
     ports:
-      - "8000:8000"
+      - "8080:8000"
