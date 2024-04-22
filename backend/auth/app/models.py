@@ -15,6 +15,10 @@ class ResendVerificationCode(BaseUser):
 
 class ForgotPasswordModel(BaseUser):
     pass
+
+class ResetPasswordRequest(BaseUser):
+    verification_code: str
+    new_password: str
     
 class ResponseModel(SQLModel):
     message: str

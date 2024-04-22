@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel, ForgotPasswordModel
+from app.models import SignupRequest, VerificationCode, ResendVerificationCode, ResponseModel, ForgotPasswordModel, ResetPasswordRequest
 import json
 
 class Users(SQLModel, table=True):
@@ -214,4 +214,27 @@ async def forgot_password(request_model: ForgotPasswordModel, session: Session =
     )
     
     message = {"message": "OTP sent successfully"}
+    return Response(content=json.dumps(message), status_code=200)
+
+@app.post("/reset_password", response_model=ResponseModel)
+async def reset_password(request: ResetPasswordRequest, session: Session = Depends(get_session)):
+    # Find the user with the provided email
+    user = session.exec(select(Users).where(Users.email == request.email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if the verification code matches
+    if user.verification_code != request.verification_code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    # Check if the verification code is expired
+    current_timestamp = int(datetime.now().timestamp())
+    if user.code_expiry_timestamp and user.code_expiry_timestamp < current_timestamp:
+        raise HTTPException(status_code=400, detail="Verification code expired")
+
+    # Reset the user's password
+    user.password = request.new_password
+    session.commit()
+
+    message = {"message": "Password reset successfully"}
     return Response(content=json.dumps(message), status_code=200)
