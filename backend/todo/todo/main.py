@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select
-from app import settings
+from todo import settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from typing import AsyncGenerator
