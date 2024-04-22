@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import uuid
 from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
-from app.models import SignupRequest, VerificationCode
+from app.models import SignupRequest, VerificationCode, ResendVerificationCode
 import json
 
 class Users(SQLModel, table=True):
@@ -138,6 +138,9 @@ async def verify_email(verification_data: VerificationCode, session: Session = D
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if user.email_verified == True:
+        raise HTTPException(status_code=400, detail="Email is Verified Already")
+
     # Check if the verification code matches
     if user.verification_code != verification_data.verification_code:
         raise HTTPException(status_code=400, detail="Invalid verification code")
@@ -150,5 +153,40 @@ async def verify_email(verification_data: VerificationCode, session: Session = D
     # Update the email_verified field
     user.email_verified = True
     session.commit()
+    
+    message = {"message": "Email verified successfully"}
+    response = Response(content=json.dumps(message),status_code=201)
 
-    return {"message": "Email verified successfully"}
+    return response
+
+@app.post("/resend-verification-code")
+async def resend_verification_code(resend_data: ResendVerificationCode, session: Session = Depends(get_session)):
+    # Find the user with the provided email
+    user = session.exec(select(Users).where(Users.email == resend_data.email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.email_verified == True:
+        raise HTTPException(status_code=400, detail="Email is Verified Already")
+
+    # Generate a new verification code
+    new_verification_code = generate_otp()
+
+    # Update the user's verification code and expiry timestamp
+    user.verification_code = str(new_verification_code)
+    user.code_expiry_timestamp = int((datetime.now() + timedelta(minutes=5)).timestamp())
+    session.commit()
+
+    # Send the new verification code via email
+    await send_email_smtplib(
+        "Todo List - Email Verificaion Otp",
+        "t55484278@gmail.com",
+         resend_data.email,
+        "dtys apkz kbun wtmp",
+        f"<h3>The OTP to reset your password is {new_verification_code} and it will be expired in 5 minutes.</h3>"
+    )
+
+    message = {"message": "Email is Verified Already!"}
+    response = Response(content=json.dumps(message),status_code=201)
+
+    return response
