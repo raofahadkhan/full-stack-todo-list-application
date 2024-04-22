@@ -1,15 +1,17 @@
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from app import settings
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException
 from typing import AsyncGenerator
-from fastapi import FastAPI, HTTPException, Depends, Cookie, Response
+from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
-from jose import JWTError, jwt
+from jose import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 import uuid
-from app.helpers import generate_otp, send_email_smtplib
+from app.helpers import generate_otp, send_email_smtplib, create_access_token, create_refresh_token
+from app.models import SignupRequest
+import json
 
 class Users(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
@@ -22,10 +24,6 @@ class Users(SQLModel, table=True):
     created_date: int = Field(default=datetime.now().timestamp())
     refresh_token: str = Field(default=None)
 
-class SignupRequest(SQLModel):
-    name: str
-    email: str
-    password: str
 
 connection_string = str(settings.DATABASE_URL).replace(
     "postgresql", "postgresql+psycopg"
@@ -71,33 +69,6 @@ app.add_middleware(
 def get_session():
     with Session(engine) as session:
         yield session
-        
-def verify_token(token: str = Cookie(None)):
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return username
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-# Generate JWT access token
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
-    return encoded_jwt
-
-# Generate JWT refresh token
-def create_refresh_token(data: dict):
-    return create_access_token(data, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
-
-
 
 @app.get("/")
 def read_root():
@@ -149,7 +120,7 @@ async def signup(request: SignupRequest, session: Session = Depends(get_session)
     session.refresh(new_user)
 
     message = {"message": "User created successfully"}
-    response = Response(content=message,status_code=201)
+    response = Response(content=json.dumps(message),status_code=201)
 
     # Set access token and refresh token as cookies with expiration time
     # access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
