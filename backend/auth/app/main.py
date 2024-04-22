@@ -4,20 +4,25 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Depends, Cookie, Response
+from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
+import uuid
+from fastapi.responses import JSONResponse
 
-class User(SQLModel, table=True):
+
+class Users(SQLModel, table=True):
     user_id: str = Field(primary_key=True, index=True)
+    name: str = Field(max_length=40)
     email: str = Field(max_length=40)
     password: str = Field(max_length=64)
     email_verified: bool = Field(default=False)
     verification_code: str = Field(max_length=6, default=None)
     code_created_date: int = Field(default=None)
     code_expiry_date: int = Field(default=None)
-    created_date: int = Field(default=None)
-    updated_date: int = Field(default=None)
+    created_date: int = Field(default=datetime.now().timestamp())
+    refresh_token: str = Field(default=None)
 
 class SignupRequest(SQLModel):
     name: str
@@ -44,11 +49,26 @@ async def lifespan(app:FastAPI)->AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan, title="Todo Api", version="0.0.1", 
         servers=[
             {
-                "url": "http://0.0.0.0:8000",
+                "url": "http://localhost:8000",
                 "description": "Development Server"
             }
           ]
         )
+
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://localhost:8000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 def get_session():
     with Session(engine) as session:
@@ -79,37 +99,53 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def create_refresh_token(data: dict):
     return create_access_token(data, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
 
-# Signup API endpoint
-@app.post("/signup/")
-async def signup(request: SignupRequest, session: Session = Depends(get_session)):
-    # Check if user already exists
-    existing_user = session.exec(select(User).where(User.email == request.email)).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
-
-    # Create a new user
-    new_user = User(name=request.name, email=request.email, password=request.password)
-    session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
-
-    # Generate access token and refresh token
-    access_token = create_access_token(data={"sub": new_user.email})
-    refresh_token = create_refresh_token(data={"sub": new_user.email})
-
-    # Set expiration time for cookies
-    access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 # Adjust as needed
-    refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60 # Adjust as needed
-
-    # Set access token and refresh token as cookies with expiration time
-    response = Response()
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
-
-    return response
 
 
 @app.get("/")
 def read_root():
     return {"API Name": "Authentication API"} 
 
+# Signup API endpoint
+@app.post("/signup/")
+async def signup(request: SignupRequest, session: Session = Depends(get_session)):
+    # Check if user already exists
+    existing_user = session.exec(select(Users).where(Users.email == request.email)).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+
+
+    # Generate a UUID for user_id
+    user_id = str(uuid.uuid4())
+
+    # Generate access token and refresh token
+    access_token = create_access_token(data={"sub": request.email})
+    refresh_token = create_refresh_token(data={"sub": request.email})
+
+    # Create a new user with the generated user_id
+    new_user = Users(
+        user_id=user_id,
+        name=request.name,
+        email=request.email,
+        password=request.password,
+        verification_code=10000,
+        code_created_date=int(datetime.now().timestamp()),
+        code_expiry_date=int(datetime.now().timestamp()),
+        refresh_token=refresh_token
+    )
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    # Set access token and refresh token as cookies with expiration time
+    response = Response()
+    
+    # Set expiration time for cookies
+    access_token_expires = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    refresh_token_expires = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=access_token_expires)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=refresh_token_expires)
+
+      # Return success message
+    message = {"message": "User created successfully"}
+    return JSONResponse(content=message, status_code=201)
