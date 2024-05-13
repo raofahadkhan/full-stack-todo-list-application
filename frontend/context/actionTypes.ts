@@ -1,9 +1,0 @@
-// ALERT
-export const ADD_ALERT = 'ADD_ALERT';
-export const CLEAR_ALERT = 'CLEAR_ALERT';
-export const CLEAR_ALERT_STATE = 'CLEAR_ALERT_STATE';
-
-// AUTH
-export const SET_AUTH_LOADING = 'SET_AUTH_LOADING';
-export const UPDATE_USER = 'UPDATE_USER';
-export const CLEAR_AUTH_STATE = 'CLEAR_AUTH_STATE';
