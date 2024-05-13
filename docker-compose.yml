@@ -10,7 +10,7 @@ services:
     depends_on:
         - postgres_db
     ports:
-      - "8000:8000"  # Expose container port 8000 to host port 8000  
+      - "8000:8000" 
     networks:
       - my-api-net
   auth:
@@ -20,11 +20,11 @@ services:
     depends_on:
         - postgres_db
     ports:
-      - "8000:8000"  # Expose container port 8000 to host port 8000  
+      - "8000:8000" 
     networks:
       - my-api-net
   postgres_db:
-    image: postgres:latest  # Use the official PostgreSQL image
+    image: postgres:latest
     restart: always
     container_name: PostgresCont
     environment:
@@ -43,4 +43,4 @@ volumes:
     driver: local
 
 networks:
-  my-api-net:  # Define the custom network
+  my-api-net:
