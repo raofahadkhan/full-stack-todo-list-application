@@ -8,19 +8,22 @@ services:
       context: ./todo
       dockerfile: Dockerfile.dev
     depends_on:
-        - postgres_db
+      - postgres_db
     ports:
-      - "8000:8000" 
+      - "8000:8000"
     networks:
       - my-api-net
+    # environment:
+    #   - DATABASE_URL=postgresql://raofahadkhan:my_password@postgres_db:5432/mydatabase?sslmode=disable
+
   auth:
     build:
       context: ./auth
       dockerfile: Dockerfile.dev
     depends_on:
-        - postgres_db
+      - postgres_db
     ports:
-      - "8001:8000" 
+      - "8001:8000"
     networks:
       - my-api-net
   postgres_db:
@@ -28,13 +31,13 @@ services:
     restart: always
     container_name: postgres_container
     environment:
-        - POSTGRES_USER=raofahadkhan
-        - POSTGRES_PASSWORD=my_password
-        - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=raofahadkhan
+      - POSTGRES_PASSWORD=my_password
+      - POSTGRES_DB=mydatabase
     ports:
-        - '5433:5432'
+      - "5433:5432"
     volumes:
-        - postgres_db:/var/lib/postgresql/data
+      - postgres_db:/var/lib/postgresql/data
     networks:
       - my-api-net
 
